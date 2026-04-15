@@ -1,0 +1,317 @@
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+
+from scipy import stats
+from sklearn.preprocessing import LabelEncoder, StandardScaler
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression, LogisticRegression
+from sklearn.metrics import (
+    mean_absolute_error, mean_squared_error, r2_score,
+    accuracy_score, precision_score, recall_score, f1_score,
+    classification_report, confusion_matrix, ConfusionMatrixDisplay
+)
+
+
+
+import warnings
+warnings.filterwarnings('ignore')
+
+sns.set_theme(style='whitegrid')
+print("Libraries imported successfully.")
+
+
+
+
+# Load dataset
+df = pd.read_csv('aqi.csv')
+print("Dataset loaded.")
+print("Shape:", df.shape)
+df.head()
+
+
+#PREPROCESSING (CLEANING DATA)
+
+# Basic info — data types and null counts
+df.info()
+# Statistical summary
+#skewed data
+df.describe()
+
+
+# Unique values per column
+#only unit is having 1 unique value
+print("Unique values per column:")
+for col in df.columns:
+    print(f"  {col}: {df[col].nunique()} unique")
+
+
+# Missing values
+#Note column has all missing values
+print("Missing values per column:")
+print(df.isnull().sum())
+print("\nObservation:")
+print("- 'note' column is 100% null (all 2,35,785 values are NaN) — will be dropped")
+print("- 'unit' column has only one repeated value — carries no useful information — will be dropped")
+
+
+
+df.drop(columns=['note', 'unit'], inplace=True)
+print("\nAfter dropping 'note' and 'unit':", df.shape)
+print("Missing values after column drop:")
+print(df.isnull().sum())
+print("Preprocessing Completed")
+print("Final Shape:", df.shape)
+
+
+# EDA
+
+print("AQI Value — Descriptive Statistics:")
+print(f"  Mean    : {df['aqi_value'].mean():.2f}")
+print(f"  Median  : {df['aqi_value'].median():.2f}")
+print(f"  Std Dev : {df['aqi_value'].std():.2f}")
+print(f"  Min     : {df['aqi_value'].min()}")
+print(f"  Max     : {df['aqi_value'].max()}")
+print(f"  Skewness: {df['aqi_value'].skew():.4f}  (positive = right skewed)")
+
+
+
+#Relation between stations and AQI
+num_cols = ['number_of_monitoring_stations', 'aqi_value']
+print("Correlation Matrix:")
+print(df[num_cols].corr().round(4))
+print("\nCovariance Matrix:")
+print(df[num_cols].cov().round(4))
+
+
+
+# check skeness-right skewed and majority
+plt.figure(figsize=(10, 4))
+sns.histplot(df['aqi_value'], bins=50, kde=True, color='steelblue')
+plt.title('Distribution of AQI Values Across All Indian Cities')
+plt.xlabel('AQI Value')
+plt.ylabel('Frequency')
+plt.legend()
+plt.tight_layout()
+plt.show()
+
+
+
+# air quatity is moderate or poor
+order = ['Good', 'Satisfactory', 'Moderate', 'Poor', 'Very Poor', 'Severe']
+colors = ['#2ecc71', '#82e0aa', '#f39c12', '#e74c3c', '#9b59b6', '#2c3e50']
+
+
+#To check frequency of each AQI Category
+plt.figure(figsize=(10, 4))
+ax = sns.countplot(data=df, x='air_quality_status', order=order, palette=colors)
+for p in ax.patches:
+    ax.annotate(f'{int(p.get_height()):,}',
+                (p.get_x() + p.get_width()/2., p.get_height()),
+                ha='center', va='bottom', fontsize=9)  # to show numbers on graph
+plt.title('Frequency of Each AQI Category')
+plt.xlabel('AQI Category')
+plt.ylabel('Count')
+plt.tight_layout()
+plt.show()
+
+
+
+
+# Monthly AQI Trend
+# Converts text date → proper date format
+# So we can extract month & year
+df['date_parsed'] = pd.to_datetime(df['date'], format='%d-%m-%Y', errors='coerce')
+df['month'] = df['date_parsed'].dt.month
+df['year']  = df['date_parsed'].dt.year
+
+monthly = df.groupby(['year', 'month'])['aqi_value'].mean().reset_index()  #Average AQI for each month of each year
+monthly['period'] = pd.to_datetime(monthly[['year','month']].assign(day=1))
+
+# Time Series Line Plot
+plt.figure(figsize=(12, 4))
+for yr, grp in monthly.groupby('year'):
+    plt.plot(grp['period'], grp['aqi_value'], marker='o', label=str(yr))
+plt.title('Monthly Average AQI Trend (2022–2025)')
+plt.xlabel('Month')
+plt.ylabel('Avg AQI')
+plt.xticks(rotation=30)
+plt.legend()
+plt.tight_layout()
+plt.show()
+
+
+#BOX PLOT-outlier detection
+plt.figure(figsize=(11, 5))
+sns.boxplot(data=df, x='air_quality_status', y='aqi_value',
+            order=order, palette=colors)
+plt.title('AQI Value Spread and Outliers by Category')
+plt.xlabel('AQI Category')
+plt.ylabel('AQI Value')
+plt.tight_layout()
+plt.show()
+
+
+#Top 10 Most Polluted Cities
+top_cities = df.groupby('area')['aqi_value'].mean().sort_values(ascending=False).head(10)
+plt.figure(figsize=(10, 5))
+top_cities[::-1].plot(kind='barh', color='tomato')
+plt.title('Top 10 Most Polluted Cities — Average AQI')
+plt.xlabel('Average AQI')
+plt.ylabel('City')
+plt.tight_layout()
+plt.show()
+
+# Light → Low AQI (better air)
+# Dark → High AQI (polluted)
+top_states = df['state'].value_counts().head(10).index
+heatmap_data = df[df['state'].isin(top_states)].pivot_table(
+    index='state', columns='month', values='aqi_value', aggfunc='mean'
+)
+plt.figure(figsize=(13, 6))
+sns.heatmap(heatmap_data, annot=True, fmt='.0f', cmap='YlOrRd', linewidths=0.4)
+plt.title('Average Monthly AQI by State (Top 10 States)')
+plt.xlabel('Month')
+plt.ylabel('State')
+plt.tight_layout()
+plt.show()
+
+
+
+# We use a sample of 2000 rows for speed
+# A pairplot was used to visualize relationships between AQI, monitoring stations, and time (month). 
+# It helps in identifying correlations, clusters of air quality categories, and detecting outliers. 
+# A sample of 2000 records was used to improve performance and readability
+sample = df[['aqi_value', 'number_of_monitoring_stations', 'month', 'air_quality_status']].sample(
+    2000, random_state=42
+)
+
+sns.pairplot(sample, hue='air_quality_status',
+             vars=['aqi_value', 'number_of_monitoring_stations', 'month'],
+             palette='Set2', plot_kws={'alpha': 0.4})
+plt.suptitle('Pair Plot — AQI Variables', y=1.01)
+plt.tight_layout()
+plt.show()
+
+# LINEAR REGRESSION MODEL
+
+# Select features
+X = df[['number_of_monitoring_stations', 'month']]
+y = df['aqi_value']
+
+# Split data
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
+
+# Train model
+model = LinearRegression()
+model.fit(X_train, y_train)
+
+# Predictions
+y_pred = model.predict(X_test)
+
+# Evaluation
+print("R2 Score:", r2_score(y_test, y_pred))
+print("MSE:", mean_squared_error(y_test, y_pred))
+
+
+Q1 = df['aqi_value'].quantile(0.25)
+Q3 = df['aqi_value'].quantile(0.75)
+IQR = Q3 - Q1
+
+lower_bound = Q1 - 1.5 * IQR
+upper_bound = Q3 + 1.5 * IQR
+
+outliers = df[(df['aqi_value'] < lower_bound) | (df['aqi_value'] > upper_bound)]
+print(f"IQR-defined outlier range: {lower_bound:.1f} to {upper_bound:.1f}")
+print(f"Outliers detected: {len(outliers)} rows")
+print("Note: These are retained — extreme AQI values are real pollution events.")
+
+# Only remove physically impossible values
+before = len(df)
+df = df[(df['aqi_value'] >= 0) & (df['aqi_value'] <= 500)]
+print(f"Rows removed (AQI outside 0–500): {before - len(df)}")
+
+
+#objective 1
+#Which states contribute the most to overall AQI?
+top_states = df.groupby('state')['aqi_value'].mean().sort_values(ascending=False).head(5)
+plt.figure(figsize=(6,6))
+plt.pie(top_states, labels=top_states.index, autopct='%1.1f%%')
+plt.title("Top 5 States Contribution to AQI")
+plt.show()
+
+# objective 2 (Visvualization)
+#How does AQI change across months?
+monthly_avg = df.groupby('month')['aqi_value'].mean()
+plt.figure(figsize=(10,4))
+plt.plot(monthly_avg.index, monthly_avg.values, marker='o')
+plt.title("Average AQI Across Months")
+plt.xlabel("Month")
+plt.ylabel("AQI")
+
+plt.grid(True)
+plt.show()
+
+#objective 3
+#Hypothesis Testing (Weekend vs Weekday AQI)
+#Is AQI different on weekdays vs weekends?
+
+df['day'] = df['date_parsed'].dt.dayofweek
+df['type'] = df['day'].apply(lambda x: 'Weekend' if x >= 5 else 'Weekday')
+
+weekend = df[df['type'] == 'Weekend']['aqi_value']
+weekday = df[df['type'] == 'Weekday']['aqi_value']
+
+t_stat, p_val = stats.ttest_ind(weekend, weekday)
+
+print("T-statistic:", t_stat)
+print("P-value:", p_val)
+
+# Decision
+alpha = 0.05  # significance level
+
+if p_val < alpha:
+    print("Reject Null Hypothesis (H₀)")
+    print("AQI is significantly different on weekends vs weekdays")
+else:
+    print("Fail to Reject Null Hypothesis (H₀)")
+    print("No significant difference between weekend and weekday AQI")
+
+#objective 4
+#Can AQI be predicted using time (month)?
+
+X = df[['month']]
+y = df['aqi_value']
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
+
+model = LinearRegression()
+model.fit(X_train, y_train)
+
+y_pred = model.predict(X_test)
+
+# Plot
+plt.scatter(X, y)
+plt.plot(X.sort_values(by='month'),
+         model.predict(X.sort_values(by='month')),
+         color='red')
+
+plt.title("Regression: Month vs AQI")
+plt.show()
+
+# objective 5
+# Which pollutants are most common?
+df['primary_pollutant'] = df['prominent_pollutants'].str.split(',').str[0]
+
+pollutant_counts = df['primary_pollutant'].value_counts().head(10)
+
+plt.figure(figsize=(10,4))
+pollutant_counts.plot(kind='bar')
+
+plt.title("Most Common Pollutants")
+plt.xlabel("Pollutant")
+plt.ylabel("Count")
+
+plt.show()
