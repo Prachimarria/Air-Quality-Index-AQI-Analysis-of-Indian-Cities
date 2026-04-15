@@ -1,5 +1,5 @@
-### Air-Quality-Index-AQI-Analysis-of-Indian-Cities
-# Steps Performed
+# Air-Quality-Index-AQI-Analysis-of-Indian-Cities
+## Steps Performed
 1. Data Cleaning
 Removed unnecessary columns (note, unit)
 Checked and handled missing values
@@ -39,7 +39,7 @@ Evaluated using:
 R² Score
 Mean Squared Error (MSE)
 
-# Observations:
+## Observations:
 
 R² Score was very low → model has weak predictive power
 Indicates AQI depends on more complex factors
@@ -57,14 +57,14 @@ Outliers were not removed as they represent real pollution events
 
 
 
-# 🛠️ Technologies Used
-Python
-Pandas
-NumPy
-Matplotlib
-Seaborn
-Scikit-learn
-SciPy
+## Technologies Used
+- Python
+- Pandas
+- NumPy
+- Matplotlib
+- Seaborn
+- Scikit-learn
+- SciPy
 
 # Conclusion
 AQI data shows right-skewed distribution with extreme pollution events
