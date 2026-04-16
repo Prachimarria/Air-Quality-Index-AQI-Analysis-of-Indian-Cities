@@ -79,12 +79,22 @@ print(f"  Skewness: {df['aqi_value'].skew():.4f}  (positive = right skewed)")
 
 
 #Relation between stations and AQI
-num_cols = ['number_of_monitoring_stations', 'aqi_value']
-print("Correlation Matrix:")
-print(df[num_cols].corr().round(4))
-print("\nCovariance Matrix:")
-print(df[num_cols].cov().round(4))
 
+num_df = df.select_dtypes(include=['int64', 'float64'])
+print("Correlation Matrix:")
+corr_matrix = num_df.corr().round(4)
+print(corr_matrix)
+
+
+print("\nCovariance Matrix:")
+cov_matrix = num_df.cov().round(4)
+print(cov_matrix)
+
+plt.figure(figsize=(8,6))
+sns.heatmap(corr_matrix, annot=True, cmap='coolwarm', fmt='.2f')
+
+plt.title("Correlation Heatmap of Numerical Features")
+plt.show()
 
 
 # check skeness-right skewed and majority
@@ -198,7 +208,7 @@ plt.show()
 # LINEAR REGRESSION MODEL
 
 # Select features
-X = df[['number_of_monitoring_stations', 'month']]
+X = df['number_of_monitoring_stations']
 y = df['aqi_value']
 
 # Split data
@@ -315,3 +325,4 @@ plt.xlabel("Pollutant")
 plt.ylabel("Count")
 
 plt.show()
+
