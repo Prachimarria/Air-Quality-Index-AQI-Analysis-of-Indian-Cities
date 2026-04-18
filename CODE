@@ -315,14 +315,5 @@ plt.show()
 # Which pollutants are most common?
 df['primary_pollutant'] = df['prominent_pollutants'].str.split(',').str[0]
 
-pollutant_counts = df['primary_pollutant'].value_counts().head(10)
 
-plt.figure(figsize=(10,4))
-pollutant_counts.plot(kind='bar')
-
-plt.title("Most Common Pollutants")
-plt.xlabel("Pollutant")
-plt.ylabel("Count")
-
-plt.show()
 
