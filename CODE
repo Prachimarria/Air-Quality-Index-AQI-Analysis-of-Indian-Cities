@@ -29,10 +29,10 @@ print("Libraries imported successfully.")
 df = pd.read_csv('aqi.csv')
 print("Dataset loaded.")
 print("Shape:", df.shape)
-df.head()
+print(df.head(5))
 
 
-#PREPROCESSING (CLEANING DATA)
+# PREPROCESSING (CLEANING DATA)
 
 # Basic info — data types and null counts
 df.info()
@@ -78,23 +78,6 @@ print(f"  Skewness: {df['aqi_value'].skew():.4f}  (positive = right skewed)")
 
 
 
-#Relation between stations and AQI
-
-num_df = df.select_dtypes(include=['int64', 'float64'])
-print("Correlation Matrix:")
-corr_matrix = num_df.corr().round(4)
-print(corr_matrix)
-
-
-print("\nCovariance Matrix:")
-cov_matrix = num_df.cov().round(4)
-print(cov_matrix)
-
-plt.figure(figsize=(8,6))
-sns.heatmap(corr_matrix, annot=True, cmap='coolwarm', fmt='.2f')
-
-plt.title("Correlation Heatmap of Numerical Features")
-plt.show()
 
 
 # check skeness-right skewed and majority
@@ -205,14 +188,32 @@ plt.suptitle('Pair Plot — AQI Variables', y=1.01)
 plt.tight_layout()
 plt.show()
 
+#Coreelation and Covariance
+num_df = df[['aqi_value', 'month', 'number_of_monitoring_stations']]
+corr = num_df.corr()
+print(corr)
+plt.figure(figsize=(6,4))
+sns.heatmap(corr, annot=True, cmap='coolwarm', fmt='.2f')
+
+plt.title("Correlation Heatmap (AQI vs Features)")
+plt.show()
+
 # LINEAR REGRESSION MODEL
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.linear_model import LinearRegression
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import r2_score, mean_squared_error
+
+# Load dataset
+df = pd.read_csv("ABC.csv")
 
 # Select features
-X = df['number_of_monitoring_stations']
+X = df[['number_of_monitoring_stations']]
 y = df['aqi_value']
 
 # Split data
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
 # Train model
 model = LinearRegression()
@@ -225,23 +226,46 @@ y_pred = model.predict(X_test)
 print("R2 Score:", r2_score(y_test, y_pred))
 print("MSE:", mean_squared_error(y_test, y_pred))
 
+# Equation
+print(f"Equation: y = {model.coef_[0]:.2f}x + {model.intercept_:.2f}")
 
+# ---------------- GRAPH ----------------
+
+# Scatter plot (actual data)
+plt.scatter(X, y, label="Actual Data")
+
+# Regression line
+plt.plot(X, model.predict(X), linewidth=2, label="Regression Line")
+
+plt.xlabel("Number of Monitoring Stations")
+plt.ylabel("AQI Value")
+plt.title("Linear Regression: Stations vs AQI")
+plt.legend()
+plt.grid()
+
+plt.show()
+
+
+# Quartiles
 Q1 = df['aqi_value'].quantile(0.25)
 Q3 = df['aqi_value'].quantile(0.75)
+
+# IQR
 IQR = Q3 - Q1
 
+# Bounds
 lower_bound = Q1 - 1.5 * IQR
 upper_bound = Q3 + 1.5 * IQR
 
+# Detect outliers
 outliers = df[(df['aqi_value'] < lower_bound) | (df['aqi_value'] > upper_bound)]
-print(f"IQR-defined outlier range: {lower_bound:.1f} to {upper_bound:.1f}")
-print(f"Outliers detected: {len(outliers)} rows")
-print("Note: These are retained — extreme AQI values are real pollution events.")
 
-# Only remove physically impossible values
-before = len(df)
-df = df[(df['aqi_value'] >= 0) & (df['aqi_value'] <= 500)]
-print(f"Rows removed (AQI outside 0–500): {before - len(df)}")
+# Output
+print(f"IQR Range: {lower_bound:.2f} to {upper_bound:.2f}")
+print(f"Total Outliers Detected: {len(outliers)}")
+
+# Show some outliers
+print(outliers.head())
 
 
 #objective 1
@@ -315,16 +339,6 @@ plt.show()
 # Which pollutants are most common?
 df['primary_pollutant'] = df['prominent_pollutants'].str.split(',').str[0]
 
-pollutant_counts = df['primary_pollutant'].value_counts().head(10)
-
-plt.figure(figsize=(10,4))
-pollutant_counts.plot(kind='bar')
-
-plt.title("Most Common Pollutants")
-plt.xlabel("Pollutant")
-plt.ylabel("Count")
-
-plt.show()
 pollutant_counts = df['primary_pollutant'].value_counts().head(10)
 
 plt.figure(figsize=(10,4))
