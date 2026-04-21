@@ -32,7 +32,7 @@ print("Shape:", df.shape)
 print(df.head(5))
 
 
-# PREPROCESSING (CLEANING DATA)
+#PREPROCESSING (CLEANING DATA)
 
 # Basic info — data types and null counts
 df.info()
@@ -206,7 +206,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import r2_score, mean_squared_error
 
 # Load dataset
-df = pd.read_csv("aqi.csv")
+df = pd.read_csv("ABC.csv")
 
 # Select features
 X = df[['number_of_monitoring_stations']]
@@ -349,4 +349,5 @@ plt.xlabel("Pollutant")
 plt.ylabel("Count")
 
 plt.show()
+
 
